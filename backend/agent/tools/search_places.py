@@ -1,6 +1,21 @@
+import requests
 from typing import Any
 from agent.tools.base import Tool
+from agent.core.config import GOOGLE_PLACES_API_KEY
 
+SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
+
+FIELD_MASK = ",".join([
+    "places.id",
+    "places.displayName",
+    "places.formattedAddress",
+    "places.location",
+    "places.types",
+    "places.priceLevel",
+    "places.editorialSummary",
+])
+
+# mock data for testing without API key
 MOCK_DATA = {
     "boston": [
         {
@@ -112,9 +127,55 @@ class SearchPlacesTool(Tool):
         }
 
     def execute(self, **kwargs) -> Any:
-        # TODO: Replace with real API call (Google Places, etc.)
-        location = (kwargs.get("location") or "").lower()
-        for city, results in MOCK_DATA.items():
-            if city in location:
-                return results
-        return []
+        query = kwargs.get("query", "")
+        location = kwargs.get("location", "")
+
+        # fall back to mock if no API key
+        if not GOOGLE_PLACES_API_KEY:
+            for city, results in MOCK_DATA.items():
+                if city in location.lower():
+                    return results
+            return []
+
+        # build request body
+        text_query = f"{query} in {location}" if location else query
+        body = {"textQuery": text_query}
+
+        lat = kwargs.get("lat")
+        lon = kwargs.get("lon")
+        if lat and lon:
+            body["locationBias"] = {
+                "circle": {
+                    "center": {"latitude": lat, "longitude": lon},
+                    "radius": kwargs.get("radius", 5000.0),
+                }
+            }
+
+        if kwargs.get("openNow"):
+            body["openNow"] = True
+
+        headers = {
+            "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+            "X-Goog-FieldMask": FIELD_MASK,
+        }
+
+        resp = requests.post(SEARCH_URL, json=body, headers=headers)
+        if resp.status_code != 200:
+            return []
+
+        results = []
+        for place in resp.json().get("places", []):
+            types = place.get("types", [])
+            results.append({
+                "place_id": place.get("id"),
+                "name": place.get("displayName", {}).get("text", "Unknown"),
+                "category": types[0] if types else "place",
+                "address": place.get("formattedAddress"),
+                "lat": place.get("location", {}).get("latitude"),
+                "lon": place.get("location", {}).get("longitude"),
+                "types": types,
+                "price_level": place.get("priceLevel"),
+                "description": (place.get("editorialSummary") or {}).get("text"),
+                "source": "google_places",
+            })
+        return results
