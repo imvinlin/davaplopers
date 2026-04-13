@@ -1,8 +1,18 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from agent.api.routes import router
+from db.connection import get_pool, close_pool
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await get_pool()   # open connection pool on startup
+    yield
+    await close_pool() # close on shutdown
+
+
+app = FastAPI(lifespan=lifespan)
 
 # Change later -> right now it is allowing everything
 app.add_middleware(
