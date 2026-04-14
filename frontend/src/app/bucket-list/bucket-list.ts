@@ -11,6 +11,7 @@ import { FormsModule } from '@angular/forms';
 export class BucketList {
   showForm = false;
   searchTerm = '';
+  editingIndex: number | null = null;
 
   priorityOptions = ['Low', 'Medium', 'High'];
 
@@ -60,7 +61,7 @@ export class BucketList {
       return;
     }
 
-    this.bucketList.push({
+    const itemData = {
       name: this.newItem.name.trim(),
       location: this.newItem.location.trim(),
       priority: this.newItem.priority,
@@ -68,8 +69,47 @@ export class BucketList {
       image:
         this.newItem.image ||
         'https://via.placeholder.com/100x100.png?text=Item'
-    });
+    };
 
+    if (this.editingIndex !== null) {
+      this.bucketList[this.editingIndex] = itemData;
+    } else {
+      this.bucketList.push(itemData);
+    }
+
+    this.resetForm();
+  }
+
+  editItem(index: number): void {
+    const item = this.bucketList[index];
+
+    this.newItem = {
+      name: item.name,
+      location: item.location,
+      priority: item.priority,
+      activityTypes: [...item.activityTypes],
+      image: item.image
+    };
+
+    this.editingIndex = index;
+    this.showForm = true;
+  }
+
+  deleteItem(index: number): void {
+    this.bucketList.splice(index, 1);
+
+    if (this.editingIndex === index) {
+      this.resetForm();
+    } else if (this.editingIndex !== null && index < this.editingIndex) {
+      this.editingIndex--;
+    }
+  }
+
+  cancelEdit(): void {
+    this.resetForm();
+  }
+
+  resetForm(): void {
     this.newItem = {
       name: '',
       location: '',
@@ -78,6 +118,7 @@ export class BucketList {
       image: ''
     };
 
+    this.editingIndex = null;
     this.showForm = false;
   }
 
