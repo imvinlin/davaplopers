@@ -4,8 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { DragDropModule, CdkDragDrop, CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
 import { BucketList, BucketItem } from '../bucket-list/bucket-list';
+import { TripService, CalendarEventOut } from '../services/trip.service';
 
 interface CalEvent {
+  event_id?: number;
   date: string;
   item: BucketItem;
 }
@@ -29,19 +31,46 @@ export class CalendarComponent implements OnInit {
   today = new Date();
   current = new Date(this.today.getFullYear(), this.today.getMonth(), 1);
 
+  tripId: number | null = null;
   events: CalEvent[] = [];
   selectedDate: string | null = null;
   days: DayCell[] = [];
 
+  constructor(private tripSvc: TripService) {}
+
   ngOnInit() {
     this.generateDays();
+    this.tripSvc.getOrCreateTrip().subscribe({
+      next: (id) => { this.tripId = id; this._load(); },
+      error: () => {},
+    });
+  }
+
+  private _load() {
+    if (!this.tripId) return;
+    this.tripSvc.listEvents(this.tripId).subscribe({
+      next: (rows) => { this.events = rows.map(this._map); this.generateDays(); },
+      error: () => {},
+    });
+  }
+
+  private _map(r: CalendarEventOut): CalEvent {
+    return {
+      event_id: r.event_id,
+      date: r.event_date,
+      item: {
+        item_id: r.bucket_item_id ?? undefined,
+        name: r.title,
+        location: r.location_name ?? '',
+        priority: 'Medium',
+        activityTypes: [],
+        image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf',
+      },
+    };
   }
 
   get monthLabel() {
-    return this.current.toLocaleString('default', {
-      month: 'long',
-      year: 'numeric',
-    });
+    return this.current.toLocaleString('default', { month: 'long', year: 'numeric' });
   }
 
   generateDays() {
@@ -55,101 +84,72 @@ export class CalendarComponent implements OnInit {
       const d = new Date(year, month, -i);
       cells.push({ date: d, inMonth: false, id: this.fmt(d), events: [] });
     }
-
     for (let d = 1; d <= daysInMonth; d++) {
       const dt = new Date(year, month, d);
       cells.push({ date: dt, inMonth: true, id: this.fmt(dt), events: [] });
     }
-
     while (cells.length % 7 !== 0) {
       const last = cells[cells.length - 1].date;
       const d = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1);
       cells.push({ date: d, inMonth: false, id: this.fmt(d), events: [] });
     }
-
-    cells.forEach(cell => {
-      cell.events = this.events.filter(e => e.date === cell.id);
-    });
-
+    cells.forEach(cell => { cell.events = this.events.filter(e => e.date === cell.id); });
     this.days = cells;
   }
 
-  isToday(date: Date) {
-    return this.fmt(date) === this.fmt(this.today);
-  }
-
-  isSelected(date: Date) {
-    return this.fmt(date) === this.selectedDate;
-  }
-
-  selectDay(cell: DayCell) {
-    this.selectedDate = this.fmt(cell.date);
-  }
-
-  allowCalendarDrop = (drag: CdkDrag<any>, drop: CdkDropList<DayCell>) => {
-    return true;
-  };
+  isToday(date: Date) { return this.fmt(date) === this.fmt(this.today); }
+  isSelected(date: Date) { return this.fmt(date) === this.selectedDate; }
+  selectDay(cell: DayCell) { this.selectedDate = this.fmt(cell.date); }
+  allowCalendarDrop = (_drag: CdkDrag<any>, _drop: CdkDropList<DayCell>) => true;
 
   dropOnDay(event: CdkDragDrop<DayCell>, cell: DayCell) {
     if (event.previousContainer.id === 'bucketList') {
       const item = event.item.data as BucketItem;
-      
       const idx = this.bucketListComponent.bucketList.findIndex(i => i === item);
-      if (idx !== -1) {
-        this.bucketListComponent.bucketList.splice(idx, 1);
-      }
+      if (idx !== -1) this.bucketListComponent.bucketList.splice(idx, 1);
 
-      const newEvent: CalEvent = { date: cell.id, item };
-      this.events.push(newEvent);
-      cell.events.push(newEvent);
+      if (this.tripId) {
+        this.tripSvc.createEvent(this.tripId, {
+          title: item.name, event_date: cell.id,
+          bucket_item_id: item.item_id, location_name: item.location || undefined,
+        }).subscribe({
+          next: (saved) => { const e: CalEvent = { event_id: saved.event_id, date: cell.id, item }; this.events.push(e); cell.events.push(e); },
+          error: () => { const e: CalEvent = { date: cell.id, item }; this.events.push(e); cell.events.push(e); },
+        });
+      } else {
+        const e: CalEvent = { date: cell.id, item }; this.events.push(e); cell.events.push(e);
+      }
       this.selectedDate = cell.id;
-    } else {
-      if (event.previousContainer !== event.container) {
-        const calEvent = event.item.data as CalEvent;
-        const prevCellData = event.previousContainer.data as DayCell;
-        const evIdx = prevCellData.events.findIndex(e => e === calEvent);
-        if (evIdx > -1) prevCellData.events.splice(evIdx, 1);
-
-        calEvent.date = cell.id;
-        cell.events.push(calEvent);
-        this.selectedDate = cell.id;
-      }
+    } else if (event.previousContainer !== event.container) {
+      const calEvent = event.item.data as CalEvent;
+      const prevCell = event.previousContainer.data as DayCell;
+      const evIdx = prevCell.events.findIndex(e => e === calEvent);
+      if (evIdx > -1) prevCell.events.splice(evIdx, 1);
+      calEvent.date = cell.id; cell.events.push(calEvent); this.selectedDate = cell.id;
     }
   }
 
   dropToBucketList(event: CdkDragDrop<any>) {
     if (event.previousContainer.id !== 'bucketList') {
       const calEvent = event.item.data as CalEvent;
-      
-      const globalIdx = this.events.findIndex(e => e === calEvent);
-      if (globalIdx > -1) {
-        this.events.splice(globalIdx, 1);
-      }
-
-      const prevCellData = event.previousContainer.data as DayCell;
-      if (prevCellData && prevCellData.events) {
-         const evIdx = prevCellData.events.findIndex(e => e === calEvent);
-         if (evIdx > -1) prevCellData.events.splice(evIdx, 1);
-      }
-
+      if (calEvent.event_id && this.tripId) this.tripSvc.deleteEvent(this.tripId, calEvent.event_id).subscribe();
+      const gi = this.events.findIndex(e => e === calEvent);
+      if (gi > -1) this.events.splice(gi, 1);
+      const prevCell = event.previousContainer.data as DayCell;
+      if (prevCell?.events) { const ei = prevCell.events.findIndex(e => e === calEvent); if (ei > -1) prevCell.events.splice(ei, 1); }
       this.bucketListComponent.bucketList.push(calEvent.item);
     }
   }
 
-  prevMonth() {
-    this.current = new Date(this.current.getFullYear(), this.current.getMonth() - 1, 1);
-    this.generateDays();
+  exportICS() {
+    if (!this.tripId) return;
+    window.open(this.tripSvc.exportIcsUrl(this.tripId), '_blank');
   }
 
-  nextMonth() {
-    this.current = new Date(this.current.getFullYear(), this.current.getMonth() + 1, 1);
-    this.generateDays();
-  }
+  prevMonth() { this.current = new Date(this.current.getFullYear(), this.current.getMonth() - 1, 1); this.generateDays(); }
+  nextMonth() { this.current = new Date(this.current.getFullYear(), this.current.getMonth() + 1, 1); this.generateDays(); }
 
   private fmt(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 }
