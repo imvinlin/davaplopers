@@ -236,7 +236,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (ev.event_id) {
       this.tripSvc.deleteEvent(this.tripId, ev.event_id).subscribe({
         next: () => { this._removeEvent(ev); this.showToast('Event deleted'); },
-        error: () => { this._removeEvent(ev); },
+        error: () => { this.showToast("Couldn't delete — check permissions"); },
       });
     } else {
       this._removeEvent(ev);

@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
@@ -17,7 +17,8 @@ export class SignupComponent {
   constructor(
     private fb: FormBuilder,
     private auth: AuthService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute,
   ) {
     this.form = this.fb.group({
       firstName: ['', Validators.required],
@@ -41,7 +42,8 @@ export class SignupComponent {
     this.auth.signup({ name: `${firstName} ${lastName}`, email, password }).subscribe({
       next: (user) => {
         this.auth.saveSession(user);
-        this.router.navigate(['/chat']);
+        const redirect = this.route.snapshot.queryParamMap.get('redirect') || '/chat';
+        this.router.navigateByUrl(redirect);
       },
       error: (err) => {
         this.loading = false;

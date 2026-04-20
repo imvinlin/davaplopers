@@ -1,0 +1,74 @@
+<div class="min-h-screen bg-neutral-900 flex items-center justify-center px-4">
+  <div class="bg-neutral-800 rounded-2xl p-8 max-w-md w-full border border-neutral-700">
+    <div class="flex items-center gap-2 mb-6">
+      <div class="w-8 h-8 bg-yellow-400 rounded-lg flex items-center justify-center text-sm">✈️</div>
+      <span class="text-white font-bold text-lg">PlanCation Invite</span>
+    </div>
+
+    <div *ngIf="loading" class="text-neutral-400 text-sm">Loading invite...</div>
+
+    <div *ngIf="error && !done" class="bg-red-900/40 border border-red-700 rounded-xl p-4 text-red-200 text-sm">
+      {{ error }}
+    </div>
+
+    <div *ngIf="invite && !loading && !done">
+      <p class="text-neutral-300 text-sm mb-1">You've been invited to collaborate on:</p>
+      <p class="text-yellow-400 text-lg font-semibold mb-1">{{ invite.trip_name || 'A trip' }}</p>
+      <p class="text-neutral-500 text-xs mb-6">From: {{ invite.inviter_email }}</p>
+
+      <div *ngIf="invite.invite_status !== 'pending'" class="bg-neutral-700 rounded-xl p-4 mb-4">
+        <p class="text-white text-sm">This invite has already been <span class="font-bold">{{ invite.invite_status }}</span>.</p>
+      </div>
+
+      <div *ngIf="invite.invite_status === 'pending'">
+        <div *ngIf="needsLogin()" class="flex flex-col gap-3">
+          <p class="text-neutral-400 text-sm mb-2">Sign in to accept this invite.</p>
+          <button (click)="goLogin()"
+            class="bg-yellow-400 hover:bg-yellow-300 text-neutral-900 font-bold text-sm py-3 rounded-xl transition">
+            Sign in
+          </button>
+          <button (click)="goSignup()"
+            class="bg-neutral-700 hover:bg-neutral-600 text-white text-sm font-bold py-3 rounded-xl transition">
+            Create an account
+          </button>
+        </div>
+
+        <div *ngIf="!needsLogin() && emailMismatch()" class="space-y-3">
+          <p class="text-red-400 text-sm">
+            This invite was sent to <span class="font-bold">{{ invite.invite_email }}</span>.
+            You're signed in with a different email.
+          </p>
+          <button (click)="logout()"
+            class="w-full bg-neutral-700 hover:bg-neutral-600 text-white text-sm font-bold py-3 rounded-xl transition">
+            Sign out and sign in as {{ invite.invite_email }}
+          </button>
+        </div>
+
+        <div *ngIf="!needsLogin() && !emailMismatch()" class="flex gap-3">
+          <button (click)="respond('declined')" [disabled]="submitting"
+            class="flex-1 bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 text-white text-sm font-bold py-3 rounded-xl transition">
+            Decline
+          </button>
+          <button (click)="respond('accepted')" [disabled]="submitting"
+            class="flex-1 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-neutral-900 text-sm font-bold py-3 rounded-xl transition">
+            {{ submitting ? 'Saving...' : 'Accept' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="done === 'accepted'" class="text-center">
+      <div class="text-4xl mb-3">✅</div>
+      <p class="text-white font-bold mb-4">Invite accepted!</p>
+      <button (click)="goToTrip()"
+        class="bg-yellow-400 hover:bg-yellow-300 text-neutral-900 font-bold text-sm py-3 rounded-xl transition px-6">
+        Go to trip
+      </button>
+    </div>
+
+    <div *ngIf="done === 'declined'" class="text-center">
+      <div class="text-4xl mb-3">👋</div>
+      <p class="text-white font-bold">Invite declined.</p>
+    </div>
+  </div>
+</div>

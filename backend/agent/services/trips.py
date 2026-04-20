@@ -4,16 +4,33 @@ from db.connection import execute, execute_one, execute_write
 
 async def list_trips(user_id: int) -> list[dict]:
     rows = await execute(
-        "SELECT trip_id, user_id, trip_name, destination, start_date, end_date FROM trips WHERE user_id = %s ORDER BY created_at DESC",
-        (user_id,),
+        """
+        SELECT trip_id, user_id, trip_name, destination, start_date, end_date
+        FROM trips
+        WHERE user_id = %s
+           OR trip_id IN (
+               SELECT trip_id FROM shared_invites
+               WHERE accepted_user_id = %s AND invite_status = 'accepted'
+           )
+        ORDER BY created_at DESC
+        """,
+        (user_id, user_id),
     )
     return [dict(r) for r in rows]
 
 
 async def get_trip(trip_id: int, user_id: int) -> Optional[dict]:
     row = await execute_one(
-        "SELECT trip_id, user_id, trip_name, destination, start_date, end_date FROM trips WHERE trip_id = %s AND user_id = %s",
-        (trip_id, user_id),
+        """
+        SELECT trip_id, user_id, trip_name, destination, start_date, end_date
+        FROM trips
+        WHERE trip_id = %s
+          AND (user_id = %s OR trip_id IN (
+              SELECT trip_id FROM shared_invites
+              WHERE accepted_user_id = %s AND invite_status = 'accepted'
+          ))
+        """,
+        (trip_id, user_id, user_id),
     )
     return dict(row) if row else None
 

@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
@@ -20,7 +20,8 @@ export class LoginComponent implements OnInit {
     private fb: FormBuilder,
     private auth: AuthService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute,
   ) {
     this.form = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -59,7 +60,8 @@ export class LoginComponent implements OnInit {
     this.auth.login(this.form.value).subscribe({
       next: (res) => {
         this.auth.saveSession(res);
-        this.router.navigate(['/chat']);
+        const redirect = this.route.snapshot.queryParamMap.get('redirect') || '/chat';
+        this.router.navigateByUrl(redirect);
       },
       error: (err) => {
         this.loading = false;

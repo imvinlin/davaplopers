@@ -158,3 +158,15 @@ class InviteOut(BaseModel):
     permission_level: str
     invite_status: str
     created_at: Optional[datetime] = None
+
+
+class InviteTokenView(BaseModel):
+    invite_email: str
+    permission_level: str
+    invite_status: str
+    trip_name: Optional[str] = None
+    inviter_email: str
+
+
+class InviteRespond(BaseModel):
+    status: str  # 'accepted' or 'declined'

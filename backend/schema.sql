@@ -42,12 +42,24 @@ CREATE TABLE `shared_invites` (
   `invite_email` varchar(255) NOT NULL,
   `permission_level` enum('viewer','editor') NOT NULL DEFAULT 'viewer',
   `invite_status` enum('pending','accepted','declined') NOT NULL DEFAULT 'pending',
+  `invite_token` varchar(64) DEFAULT NULL,
+  `accepted_user_id` bigint DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`invite_id`),
+  UNIQUE KEY `uq_invites_token` (`invite_token`),
   KEY `idx_invites_trip` (`trip_id`),
-  CONSTRAINT `fk_invites_trip` FOREIGN KEY (`trip_id`) REFERENCES `trips` (`trip_id`) ON DELETE CASCADE
+  KEY `idx_invites_accepted_user` (`accepted_user_id`),
+  CONSTRAINT `fk_invites_trip` FOREIGN KEY (`trip_id`) REFERENCES `trips` (`trip_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_invites_accepted_user` FOREIGN KEY (`accepted_user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
 )
+
+-- Migration for existing DBs (run once against live DB):
+-- ALTER TABLE shared_invites ADD COLUMN invite_token VARCHAR(64) DEFAULT NULL;
+-- ALTER TABLE shared_invites ADD COLUMN accepted_user_id BIGINT DEFAULT NULL;
+-- ALTER TABLE shared_invites ADD UNIQUE KEY uq_invites_token (invite_token);
+-- ALTER TABLE shared_invites ADD KEY idx_invites_accepted_user (accepted_user_id);
+-- ALTER TABLE shared_invites ADD CONSTRAINT fk_invites_accepted_user FOREIGN KEY (accepted_user_id) REFERENCES users(user_id) ON DELETE SET NULL;
 
 
 CREATE TABLE `trips` (
