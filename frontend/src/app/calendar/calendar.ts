@@ -236,7 +236,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (ev.event_id) {
       this.tripSvc.deleteEvent(this.tripId, ev.event_id).subscribe({
         next: () => { this._removeEvent(ev); this.showToast('Event deleted'); },
-        error: () => { this._removeEvent(ev); },
+        error: () => { this.showToast("Couldn't delete — check permissions"); },
       });
     } else {
       this._removeEvent(ev);
@@ -381,9 +381,18 @@ export class CalendarComponent implements OnInit, OnDestroy {
   sendInvite() {
     if (!this.inviteEmail.trim() || !this.tripId || this.inviteSaving) return;
     this.inviteSaving = true;
-    this.tripSvc.createInvite(this.tripId, this.inviteEmail.trim(), this.invitePermission).subscribe();
-    this.closeInviteModal();
-    this.showToast('Email sent! If that address exists, they\'ll receive an invite.');
+    this.inviteError = '';
+    this.tripSvc.createInvite(this.tripId, this.inviteEmail.trim(), this.invitePermission).subscribe({
+      next: () => {
+        this.inviteSaving = false;
+        this.closeInviteModal();
+        this.showToast('Email sent! If that address exists, they\'ll receive an invite.');
+      },
+      error: () => {
+        this.inviteSaving = false;
+        this.inviteError = 'Could not send invite. Please try again.';
+      },
+    });
   }
 
   // ── View Invites ──────────────────────────────────────────────────────────

@@ -4,12 +4,14 @@ import { ChatComponent } from './chat/chat';
 import { BucketList } from './bucket-list/bucket-list';
 import { LoginComponent } from './login/login';
 import { CalendarComponent } from './calendar/calendar';
+import { InviteComponent } from './invite/invite';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'signup', pathMatch: 'full' },
   { path: 'signup', component: SignupComponent },
   { path: 'login', component: LoginComponent },
+  { path: 'invite/:token', component: InviteComponent },
   { path: 'chat', component: ChatComponent, canActivate: [authGuard] },
   { path: 'bucketlist', component: BucketList, canActivate: [authGuard] },
   { path: 'calendar', component: CalendarComponent, canActivate: [authGuard] },

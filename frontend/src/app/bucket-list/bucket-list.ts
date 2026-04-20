@@ -146,7 +146,7 @@ export class BucketList implements OnInit {
     if (item.item_id && this.tripId) {
       this.tripSvc.deleteItem(this.tripId, item.item_id).subscribe({
         next: () => { this._splice(index); this.itemDeleted.emit(item); },
-        error: () => { this._splice(index); this.itemDeleted.emit(item); },
+        error: () => { alert("Couldn't delete this item. You may not have permission."); },
       });
     } else {
       this._splice(index);
