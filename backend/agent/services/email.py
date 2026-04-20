@@ -7,6 +7,7 @@ from agent.core.config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, AP
 async def send_invite_email(to_email: str, inviter_email: str, trip_name: str) -> bool:
     """Send a trip invite email. Returns False silently if SMTP is not configured."""
     if not all([SMTP_HOST, SMTP_USER, SMTP_PASSWORD]):
+        print(f"[send_invite_email] SMTP not configured, skipping email to {to_email}")
         return False
 
     msg = MIMEMultipart("alternative")
@@ -42,5 +43,6 @@ async def send_invite_email(to_email: str, inviter_email: str, trip_name: str) -
             start_tls=True,
         )
         return True
-    except Exception:
+    except Exception as e:
+        print(f"[send_invite_email] Failed to send to {to_email}: {e}")
         return False
