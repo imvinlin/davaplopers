@@ -70,6 +70,10 @@ class LoginResponse(BaseModel):
     email: str
 
 
+class GoogleAuthRequest(BaseModel):
+    id_token: str
+
+
 class TripCreate(BaseModel):
     trip_name: Optional[str] = None
     destination: Optional[str] = None
